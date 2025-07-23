@@ -86,6 +86,11 @@ export async function getUserFromToken(token: string) {
     return null;
   }
 
+  // Check if the decoded email domain is allowed
+  if (!isEmailAllowed(decoded.email)) {
+    return null; // Reject token for non-allowed domains
+  }
+
   return prisma.user.findUnique({
     where: { id: decoded.id },
     select: { id: true, email: true },
