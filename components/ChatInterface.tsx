@@ -60,10 +60,68 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
       const conversation = await response.json();
       
       if (conversation.messages) {
-        setMessages(conversation.messages.map((msg: any) => ({
-          ...msg,
-          sources: msg.sources ? JSON.parse(msg.sources) : undefined
-        })));
+        const processedMessages: Message[] = [];
+        
+        conversation.messages.forEach((msg: any) => {
+          if (msg.role === 'user') {
+            // User messages don't need splitting
+            processedMessages.push({
+              ...msg,
+              sources: msg.sources ? JSON.parse(msg.sources) : undefined
+            });
+          } else if (msg.role === 'assistant') {
+            // Check if this message has sources
+            const sources = msg.sources ? JSON.parse(msg.sources) : undefined;
+            
+            if (sources && sources.length > 0) {
+              // This is a sources message, keep it as is
+              if (msg.content === "Here are a couple articles from our website") {
+                processedMessages.push({
+                  ...msg,
+                  sources: sources
+                });
+              } else {
+                // This is a regular AI message that needs splitting
+                const paragraphs = msg.content.split('\n\n').filter((p: string) => p.trim().length > 0);
+                
+                // Add split paragraphs
+                paragraphs.forEach((paragraph: string, index: number) => {
+                  processedMessages.push({
+                    ...msg,
+                    id: `${msg.id}-${index}`,
+                    content: paragraph.trim(),
+                    sources: undefined,
+                    isLastInGroup: index === paragraphs.length - 1
+                  });
+                });
+                
+                // Add sources message
+                processedMessages.push({
+                  ...msg,
+                  id: `${msg.id}-sources`,
+                  content: "Here are a couple articles from our website",
+                  sources: sources,
+                  isLastInGroup: true
+                });
+              }
+            } else {
+              // Regular AI message without sources, split it
+              const paragraphs = msg.content.split('\n\n').filter((p: string) => p.trim().length > 0);
+              
+              paragraphs.forEach((paragraph: string, index: number) => {
+                processedMessages.push({
+                  ...msg,
+                  id: `${msg.id}-${index}`,
+                  content: paragraph.trim(),
+                  sources: undefined,
+                  isLastInGroup: index === paragraphs.length - 1
+                });
+              });
+            }
+          }
+        });
+        
+        setMessages(processedMessages);
       }
     } catch (err) {
       console.error('Error fetching conversation:', err);
