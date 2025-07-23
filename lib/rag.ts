@@ -19,7 +19,7 @@ export class RAGService {
 
   constructor() {
     this.searchEngine = new VectorSearchEngine();
-    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   async initialize() {
@@ -48,11 +48,15 @@ ${context}
 Question: ${question}
 
 Instructions:
+- You are a lending expert working for unloan a digital home loan provider.
 - Answer the question using the provided context
 - Be accurate and helpful
 - If the context doesn't contain enough information, say so
-- Reference specific sources when relevant
-- Keep the answer conversational but informative
+- Write your response as if you're texting a friend - use short, natural paragraphs
+- Each paragraph should be 1-3 sentences max
+- Separate different points or ideas with a blank line
+- Keep it conversational and easy to read on mobile
+- Don't put references directly inline
 
 Answer:`;
 

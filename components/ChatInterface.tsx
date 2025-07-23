@@ -18,6 +18,7 @@ interface Message {
     similarity: number;
   }>;
   createdAt: string;
+  isLastInGroup?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -89,12 +90,19 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         throw new Error(data.message || 'Failed to send message');
       }
 
-      const aiMessageWithSources = {
+      // Split AI response into separate messages for each paragraph
+      const aiResponse = data.aiMessage.content;
+      const paragraphs = aiResponse.split('\n\n').filter((p: string) => p.trim().length > 0);
+      
+      const aiMessages = paragraphs.map((paragraph: string, index: number) => ({
         ...data.aiMessage,
-        sources: data.aiMessage.sources
-      };
+        id: `${data.aiMessage.id}-${index}`,
+        content: paragraph.trim(),
+        sources: index === paragraphs.length - 1 ? data.aiMessage.sources : undefined, // Only show sources on the last message
+        isLastInGroup: index === paragraphs.length - 1
+      }));
 
-      setMessages(prev => [...prev, data.userMessage, aiMessageWithSources]);
+      setMessages(prev => [...prev, data.userMessage, ...aiMessages]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -123,16 +131,46 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
 
           <div className="messages">
             {messages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>
-                <h3>Welcome to Unloan Q&A!</h3>
-                <p>Ask me anything about home loans, interest rates, offset accounts, or any other Unloan services.</p>
-                <div style={{ marginTop: '20px', fontSize: '14px' }}>
-                  <strong>Try asking:</strong>
-                  <ul style={{ listStyle: 'none', marginTop: '10px' }}>
-                    <li>• "What are offset accounts and how do they work?"</li>
-                    <li>• "What is LMI and when do I need it?"</li>
-                    <li>• "How does LVR affect my interest rate?"</li>
-                    <li>• "What are the benefits of Unloan's home loan?"</li>
+              <div style={{ textAlign: 'center', padding: '60px 40px', color: '#666' }}>
+                <h3 style={{ 
+                  fontFamily: 'Inter, sans-serif', 
+                  fontSize: '20px', 
+                  fontWeight: '600', 
+                  color: '#000000', 
+                  marginBottom: '12px',
+                  letterSpacing: '-0.01em'
+                }}>
+                  Welcome to Unloan Q&A!
+                </h3>
+                <p style={{ 
+                  fontFamily: 'Inter, sans-serif', 
+                  fontSize: '14px', 
+                  lineHeight: '1.5',
+                  marginBottom: '24px'
+                }}>
+                  Ask me anything about home loans, interest rates, offset accounts, or any other Unloan services.
+                </p>
+                <div style={{ fontSize: '14px' }}>
+                  <strong style={{ 
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#666',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Try asking:
+                  </strong>
+                  <ul style={{ 
+                    listStyle: 'none', 
+                    marginTop: '16px',
+                    fontFamily: 'Inter, sans-serif',
+                    lineHeight: '1.6'
+                  }}>
+                    <li style={{ marginBottom: '8px' }}>• "What are offset accounts and how do they work?"</li>
+                    <li style={{ marginBottom: '8px' }}>• "What is LMI and when do I need it?"</li>
+                    <li style={{ marginBottom: '8px' }}>• "How does LVR affect my interest rate?"</li>
+                    <li style={{ marginBottom: '8px' }}>• "What are the benefits of Unloan's home loan?"</li>
                   </ul>
                 </div>
               </div>
@@ -140,22 +178,35 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
             
             {messages.map((message) => (
               <div key={message.id} className={`message ${message.role}`}>
-                <div className="message-role">{message.role}</div>
                 <div>{message.content}</div>
                 
                 {message.sources && message.sources.length > 0 && (
-                  <div className="sources">
-                    <strong>Sources:</strong>
-                    {message.sources.map((source, i) => (
-                      <div key={i} className="source">
-                        <a href={source.url} target="_blank" rel="noopener noreferrer" className="source-url">
-                          {source.title}
-                        </a>
-                        <div style={{ marginTop: '5px', fontSize: '12px', color: '#6c757d' }}>
-                          Similarity: {(source.similarity * 100).toFixed(1)}%
+                  <div className="source-carousel">
+                    <div className="source-carousel-header">
+                      Related Articles
+                    </div>
+                    <div className="source-cards">
+                      {message.sources.map((source, i) => (
+                        <div
+                          key={i}
+                          className="source-card"
+                          onClick={() => window.open(source.url, '_blank')}
+                        >
+                          <div className="source-card-title">
+                            {source.title}
+                          </div>
+                          <div className="source-card-excerpt">
+                            {source.content}
+                          </div>
+                          <div className="source-card-footer">
+                            <span>unloan.com.au</span>
+                            <span className="source-card-similarity">
+                              {(source.similarity * 100).toFixed(0)}% match
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -163,7 +214,6 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
             
             {loading && (
               <div className="message assistant">
-                <div className="message-role">assistant</div>
                 <div>Thinking...</div>
               </div>
             )}
