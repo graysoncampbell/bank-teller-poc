@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "setup": "tsx scripts/setup.ts",
@@ -12,7 +12,8 @@
     "generate-embeddings": "tsx scripts/generate-embeddings.ts",
     "migrate-to-mongodb": "tsx scripts/migrate-to-mongodb.ts",
     "vector-search": "tsx scripts/vector-search.ts",
-    "status": "tsx scripts/setup.ts"
+    "status": "tsx scripts/setup.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.57.0",
