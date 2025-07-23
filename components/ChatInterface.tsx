@@ -245,9 +245,27 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         <div className="main-chat" style={{ width: '100%' }}>
           <div className="chat-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2>Unloan Q&A Assistant</h2>
-                <p>Ask me anything about home loans and Unloan's services</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="profile-avatar">
+                  <img 
+                    src="https://cdn.unloan.com.au/webflow/icon-head_woman.avif" 
+                    alt="Jane"
+                    style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      objectFit: 'cover' 
+                    }}
+                  />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '16px', fontWeight: '600', margin: '0', lineHeight: '1.2' }}>
+                    Jane
+                  </h2>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '2px 0 0 0', lineHeight: '1.2' }}>
+                    Unloan Banker
+                  </p>
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <span style={{ fontSize: '14px', color: '#6c757d' }}>{user.email}</span>
@@ -269,7 +287,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                   marginBottom: '12px',
                   letterSpacing: '-0.01em'
                 }}>
-                  Welcome to Unloan Q&A!
+                  Hi there! I'm Jane 👋
                 </h3>
                 <p style={{ 
                   fontFamily: 'Inter, sans-serif', 
@@ -277,7 +295,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                   lineHeight: '1.5',
                   marginBottom: '24px'
                 }}>
-                  Ask me anything about home loans, interest rates, offset accounts, or any other Unloan services.
+                  I'm here to help with all your home loan questions. Ask me about rates, features, or anything else about Unloan!
                 </p>
                 <div style={{ fontSize: '14px' }}>
                   <strong style={{ 

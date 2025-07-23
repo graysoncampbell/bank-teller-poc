@@ -128,26 +128,26 @@ body {
 }
 
 .chat-header {
-  padding: 24px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #ffffff;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e5ea;
+  background: #f7f7f7;
+  backdrop-filter: blur(20px);
 }
 
-.chat-header h2 {
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: #000000;
-  margin-bottom: 4px;
-  letter-spacing: -0.02em;
+.profile-avatar {
+  position: relative;
 }
 
-.chat-header p {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: #666;
-  font-weight: 400;
-  line-height: 1.5;
+.profile-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #34c759;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
 }
 
 .messages {
