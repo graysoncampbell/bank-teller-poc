@@ -90,6 +90,19 @@ export default function ChatInterface({ user, onLogout, isOpen, onClose }: ChatI
   const checkForWelcomeBack = (messages: Message[]) => {
     if (messages.length === 0) return false;
     
+    // Check if there are recent welcome messages (within last 5 messages)
+    const recentMessages = messages.slice(-5);
+    const hasRecentWelcome = recentMessages.some(msg => 
+      msg.role === 'assistant' && 
+      (msg.content.includes('Hi there! I\'m Jane') || 
+       msg.content.includes('Welcome back!') ||
+       msg.content.includes('What can I help you with today?'))
+    );
+    
+    if (hasRecentWelcome) {
+      return false; // Don't show welcome back if we already have recent welcome messages
+    }
+    
     const lastMessageTimestamp = localStorage.getItem(`lastMessage_${user.id}`);
     const currentTime = Date.now();
     
@@ -107,8 +120,8 @@ export default function ChatInterface({ user, onLogout, isOpen, onClose }: ChatI
     setShouldShowWelcomeBack(false);
     
     const welcomeMessages = [
-      'Hi there! I\'m Jane 👋',
-      'I\'m here to help with all your home loan questions. Ask me about rates, features, or anything else about Unloan!'
+      'Welcome back! 👋',
+      'What can I help you with today?'
     ];
     
     const messagesToAnimate: Message[] = welcomeMessages.map((content, index) => ({
