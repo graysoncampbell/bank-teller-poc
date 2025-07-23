@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("MONGODB_URL")
 }
 
 model Page {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   url             String   @unique
   title           String?
   content         String?
@@ -24,8 +24,8 @@ model Page {
 }
 
 model Embedding {
-  id        String   @id @default(cuid())
-  pageId    String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  pageId    String   @db.ObjectId
   content   String
   vector    String   // JSON string of embedding vector
   metadata  String?  // JSON string of additional metadata
@@ -35,7 +35,7 @@ model Embedding {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
@@ -45,8 +45,8 @@ model User {
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  userId    String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
   title     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,8 +56,8 @@ model Conversation {
 }
 
 model Message {
-  id             String   @id @default(cuid())
-  conversationId String
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @db.ObjectId
   role           String   // 'user' or 'assistant'
   content        String
   sources        String?  // JSON string of sources used for the response
