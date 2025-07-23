@@ -19,6 +19,7 @@ interface Message {
   }>;
   createdAt: string;
   isLastInGroup?: boolean;
+  isAnimating?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -31,6 +32,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -68,14 +70,66 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
     }
   };
 
+  const animateMessages = async (messagesToAnimate: Message[]) => {
+    for (let i = 0; i < messagesToAnimate.length; i++) {
+      const message = messagesToAnimate[i];
+      
+      // Add typing indicator for assistant messages (except user message)
+      if (message.role === 'assistant' && i > 0) {
+        setIsTyping(true);
+        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 600)); // Random delay between 800-1400ms
+        setIsTyping(false);
+      }
+      
+      // Add the message with animation
+      setMessages(prev => [...prev, { ...message, isAnimating: true }]);
+      
+      // Brief pause after each message appears
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Remove animation class
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === message.id ? { ...msg, isAnimating: false } : msg
+        )
+      );
+      
+      // Small delay before next message
+      if (i < messagesToAnimate.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
     setError('');
     setLoading(true);
+    setIsTyping(true);
     const userMessage = input;
     setInput('');
+
+    // Add user message immediately
+    const userMsg = {
+      id: `user-${Date.now()}`,
+      role: 'user' as const,
+      content: userMessage,
+      createdAt: new Date().toISOString(),
+      isAnimating: true
+    };
+    
+    setMessages(prev => [...prev, userMsg]);
+    
+    // Remove animation from user message
+    setTimeout(() => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === userMsg.id ? { ...msg, isAnimating: false } : msg
+        )
+      );
+    }, 300);
 
     try {
       const response = await fetch('/api/messages', {
@@ -90,6 +144,8 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         throw new Error(data.message || 'Failed to send message');
       }
 
+      setIsTyping(false);
+
       // Split AI response into separate messages for each paragraph
       const aiResponse = data.aiMessage.content;
       const paragraphs = aiResponse.split('\n\n').filter((p: string) => p.trim().length > 0);
@@ -103,7 +159,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
       }));
 
       // Add sources message if there are sources
-      const allMessages = [data.userMessage, ...aiMessages];
+      const messagesToAnimate = [...aiMessages];
       if (data.aiMessage.sources && data.aiMessage.sources.length > 0) {
         const sourcesMessage = {
           ...data.aiMessage,
@@ -112,12 +168,14 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
           sources: data.aiMessage.sources,
           isLastInGroup: true
         };
-        allMessages.push(sourcesMessage);
+        messagesToAnimate.push(sourcesMessage);
       }
 
-      setMessages(prev => [...prev, ...allMessages]);
+      // Animate messages one by one
+      await animateMessages(messagesToAnimate);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setIsTyping(false);
     } finally {
       setLoading(false);
     }
@@ -191,7 +249,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
             
             {messages.map((message) => (
               <div key={message.id}>
-                <div className={`message ${message.role}`}>
+                <div className={`message ${message.role} ${message.isAnimating ? 'message-entering' : ''}`}>
                   <div>{message.content}</div>
                 </div>
                 
@@ -224,9 +282,13 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
               </div>
             ))}
             
-            {loading && (
-              <div className="message assistant">
-                <div>Thinking...</div>
+            {isTyping && (
+              <div className="typing-indicator">
+                <div className="typing-dots">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                </div>
               </div>
             )}
             
