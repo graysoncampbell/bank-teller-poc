@@ -33,7 +33,10 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [shouldShowWelcomeBack, setShouldShowWelcomeBack] = useState(false);
+  const [hasShownInitialWelcome, setHasShownInitialWelcome] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const welcomeShownRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,6 +50,77 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
     fetchConversation();
   }, []);
 
+  const showInitialWelcome = async () => {
+    // Prevent showing initial welcome multiple times using ref (survives re-renders)
+    if (welcomeShownRef.current || hasShownInitialWelcome || messages.length > 0) return;
+    
+    welcomeShownRef.current = true;
+    setHasShownInitialWelcome(true);
+    
+    // Clear any existing messages first
+    setMessages([]);
+    
+    const welcomeMessages = [
+      'Hi there! I\'m Jane 👋',
+      'I\'m here to help with all your home loan questions. Ask me about rates, features, or anything else about Unloan!',
+      'Try asking:',
+      '"What are offset accounts and how do they work?"',
+      '"What is LMI and when do I need it?"',
+      '"How does LVR affect my interest rate?"',
+      '"What are the benefits of Unloan\'s home loan?"'
+    ];
+    
+    const timestamp = Date.now();
+    const messagesToAnimate: Message[] = welcomeMessages.map((content, index) => ({
+      id: `initial-welcome-${timestamp}-${index}`,
+      role: 'assistant' as const,
+      content,
+      createdAt: new Date().toISOString(),
+      isLastInGroup: index === welcomeMessages.length - 1
+    }));
+    
+    // Small delay then animate messages
+    setTimeout(async () => {
+      await animateMessages(messagesToAnimate);
+    }, 500);
+  };
+
+  const checkForWelcomeBack = (messages: Message[]) => {
+    if (messages.length === 0) return false;
+    
+    const lastMessageTimestamp = localStorage.getItem(`lastMessage_${user.id}`);
+    const currentTime = Date.now();
+    
+    if (lastMessageTimestamp) {
+      const timeDiff = currentTime - parseInt(lastMessageTimestamp);
+      const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
+      
+      return timeDiff > fifteenMinutes;
+    }
+    
+    return false;
+  };
+
+  const showWelcomeBackMessage = async () => {
+    setShouldShowWelcomeBack(false);
+    
+    const welcomeMessages = [
+      'Hi there! I\'m Jane 👋',
+      'I\'m here to help with all your home loan questions. Ask me about rates, features, or anything else about Unloan!'
+    ];
+    
+    const messagesToAnimate: Message[] = welcomeMessages.map((content, index) => ({
+      id: `welcome-back-${Date.now()}-${index}`,
+      role: 'assistant' as const,
+      content,
+      createdAt: new Date().toISOString(),
+      isLastInGroup: index === welcomeMessages.length - 1
+    }));
+    
+    // Animate messages one by one like regular AI responses
+    await animateMessages(messagesToAnimate);
+  };
+
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,
     'Content-Type': 'application/json',
@@ -57,9 +131,14 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
       const response = await fetch('/api/conversations', {
         headers: getAuthHeaders(),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversation');
+      }
+      
       const conversation = await response.json();
       
-      if (conversation.messages) {
+      if (conversation.messages && conversation.messages.length > 0) {
         const processedMessages: Message[] = [];
         
         conversation.messages.forEach((msg: any) => {
@@ -122,9 +201,27 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         });
         
         setMessages(processedMessages);
+        setHasShownInitialWelcome(true); // Mark that we have existing messages
+        welcomeShownRef.current = true; // Prevent welcome from showing
+        
+        // Check if we should show welcome back message
+        if (checkForWelcomeBack(processedMessages)) {
+          setTimeout(() => {
+            showWelcomeBackMessage();
+          }, 1500); // Small delay to let messages load first
+        }
+      } else {
+        // No messages exist, show initial welcome (only if not already shown)
+        if (!welcomeShownRef.current && !hasShownInitialWelcome) {
+          showInitialWelcome();
+        }
       }
     } catch (err) {
       console.error('Error fetching conversation:', err);
+      // If there's an error fetching, show initial welcome (only if not already shown)
+      if (!welcomeShownRef.current && !hasShownInitialWelcome) {
+        showInitialWelcome();
+      }
     }
   };
 
@@ -231,6 +328,9 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
 
       // Animate messages one by one
       await animateMessages(messagesToAnimate);
+      
+      // Store timestamp of last message for welcome back feature
+      localStorage.setItem(`lastMessage_${user.id}`, Date.now().toString());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsTyping(false);
@@ -276,53 +376,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
             </div>
           </div>
 
-          <div className="messages">
-            {messages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 40px', color: '#666' }}>
-                <h3 style={{ 
-                  fontFamily: 'Inter, sans-serif', 
-                  fontSize: '20px', 
-                  fontWeight: '600', 
-                  color: '#000000', 
-                  marginBottom: '12px',
-                  letterSpacing: '-0.01em'
-                }}>
-                  Hi there! I'm Jane 👋
-                </h3>
-                <p style={{ 
-                  fontFamily: 'Inter, sans-serif', 
-                  fontSize: '14px', 
-                  lineHeight: '1.5',
-                  marginBottom: '24px'
-                }}>
-                  I'm here to help with all your home loan questions. Ask me about rates, features, or anything else about Unloan!
-                </p>
-                <div style={{ fontSize: '14px' }}>
-                  <strong style={{ 
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#666',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Try asking:
-                  </strong>
-                  <ul style={{ 
-                    listStyle: 'none', 
-                    marginTop: '16px',
-                    fontFamily: 'Inter, sans-serif',
-                    lineHeight: '1.6'
-                  }}>
-                    <li style={{ marginBottom: '8px' }}>• "What are offset accounts and how do they work?"</li>
-                    <li style={{ marginBottom: '8px' }}>• "What is LMI and when do I need it?"</li>
-                    <li style={{ marginBottom: '8px' }}>• "How does LVR affect my interest rate?"</li>
-                    <li style={{ marginBottom: '8px' }}>• "What are the benefits of Unloan's home loan?"</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-            
+          <div className="messages">            
             {messages.map((message) => (
               <div key={message.id}>
                 <div className={`message ${message.role} ${message.isAnimating ? 'message-entering' : ''}`}>
