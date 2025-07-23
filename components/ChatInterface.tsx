@@ -98,11 +98,24 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         ...data.aiMessage,
         id: `${data.aiMessage.id}-${index}`,
         content: paragraph.trim(),
-        sources: index === paragraphs.length - 1 ? data.aiMessage.sources : undefined, // Only show sources on the last message
+        sources: undefined, // Sources will be handled separately
         isLastInGroup: index === paragraphs.length - 1
       }));
 
-      setMessages(prev => [...prev, data.userMessage, ...aiMessages]);
+      // Add sources message if there are sources
+      const allMessages = [data.userMessage, ...aiMessages];
+      if (data.aiMessage.sources && data.aiMessage.sources.length > 0) {
+        const sourcesMessage = {
+          ...data.aiMessage,
+          id: `${data.aiMessage.id}-sources`,
+          content: "Here are a couple articles from our website",
+          sources: data.aiMessage.sources,
+          isLastInGroup: true
+        };
+        allMessages.push(sourcesMessage);
+      }
+
+      setMessages(prev => [...prev, ...allMessages]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -177,23 +190,22 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
             )}
             
             {messages.map((message) => (
-              <div key={message.id} className={`message ${message.role}`}>
-                <div>{message.content}</div>
+              <div key={message.id}>
+                <div className={`message ${message.role}`}>
+                  <div>{message.content}</div>
+                </div>
                 
                 {message.sources && message.sources.length > 0 && (
                   <div className="source-carousel">
-                    <div className="source-carousel-header">
-                      Related Articles
-                    </div>
                     <div className="source-cards">
                       {message.sources.map((source, i) => (
                         <div
                           key={i}
-                          className="source-card"
+                          className={`source-card ${i % 2 === 0 ? 'source-card-dark' : 'source-card-light'}`}
                           onClick={() => window.open(source.url, '_blank')}
                         >
                           <div className="source-card-title">
-                            {source.title}
+                            {source.title.replace(/^Unloan \| /, '')}
                           </div>
                           <div className="source-card-excerpt">
                             {source.content}
