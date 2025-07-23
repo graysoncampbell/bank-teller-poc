@@ -25,9 +25,11 @@ interface Message {
 interface ChatInterfaceProps {
   user: User;
   onLogout: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
+export default function ChatInterface({ user, onLogout, isOpen, onClose }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -339,111 +341,124 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="container">
-      <div className="chat-container" style={{ height: 'calc(100vh - 40px)' }}>
-        <div className="main-chat" style={{ width: '100%' }}>
-          <div className="chat-header">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className="profile-avatar">
-                  <img 
-                    src="https://cdn.unloan.com.au/webflow/icon-head_woman.avif" 
-                    alt="Jane"
-                    style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%', 
-                      objectFit: 'cover' 
-                    }}
-                  />
-                </div>
-                <div>
-                  <h2 style={{ fontSize: '16px', fontWeight: '600', margin: '0', lineHeight: '1.2' }}>
-                    Jane
-                  </h2>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '2px 0 0 0', lineHeight: '1.2' }}>
-                    Unloan Banker
-                  </p>
-                </div>
+    <div className="chat-window-overlay">
+      <div className="chat-window">
+        <div className="chat-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="profile-avatar">
+                <img 
+                  src="https://cdn.unloan.com.au/webflow/icon-head_woman.avif" 
+                  alt="Jane"
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%', 
+                    objectFit: 'cover' 
+                  }}
+                />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <span style={{ fontSize: '14px', color: '#6c757d' }}>{user.email}</span>
-                <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}>
-                  Logout
-                </button>
+              <div>
+                <h2 style={{ fontSize: '16px', fontWeight: '600', margin: '0', lineHeight: '1.2' }}>
+                  Jane
+                </h2>
+                <p style={{ fontSize: '13px', color: '#666', margin: '2px 0 0 0', lineHeight: '1.2' }}>
+                  Unloan Banker
+                </p>
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <button 
+                onClick={onClose}
+                className="chat-close-button"
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M12 4L4 12M4 4L12 12" stroke="#666" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
+        </div>
 
-          <div className="messages">            
-            {messages.map((message) => (
-              <div key={message.id}>
-                <div className={`message ${message.role} ${message.isAnimating ? 'message-entering' : ''}`}>
-                  <div>{message.content}</div>
-                </div>
-                
-                {message.sources && message.sources.length > 0 && (
-                  <div className="source-carousel">
-                    <div className="source-cards">
-                      {message.sources.map((source, i) => (
-                        <div
-                          key={i}
-                          className={`source-card ${i % 2 === 0 ? 'source-card-dark' : 'source-card-light'}`}
-                          onClick={() => window.open(source.url, '_blank')}
-                        >
-                          <div className="source-card-title">
-                            {source.title.replace(/^Unloan \| /, '')}
-                          </div>
-                          <div className="source-card-excerpt">
-                            {source.content}
-                          </div>
-                          <div className="source-card-footer">
-                            <span className="source-card-similarity">
-                              {source.similarity >= 0.7 ? 'Must read' : 'Good to know'}
-                            </span>
-                            <div className="source-card-arrow">
-                              <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M17.5659 7.30591C17.5659 7.63916 17.4207 7.9895 17.1899 8.22021L11.6187 13.7744C11.3623 14.0308 11.0547 14.1589 10.7556 14.1589C10.0293 14.1589 9.53369 13.6548 9.53369 12.9883C9.53369 12.6208 9.69604 12.3218 9.92676 12.0996L11.8408 10.1855L13.7378 8.44238L11.8665 8.54492H2.21069C1.44165 8.54492 0.928955 8.04077 0.928955 7.30591C0.928955 6.5625 1.44165 6.06689 2.21069 6.06689H11.8665L13.7292 6.16943L11.8408 4.42627L9.92676 2.50366C9.69604 2.28149 9.53369 1.99097 9.53369 1.61499C9.53369 0.948486 10.0293 0.444336 10.7556 0.444336C11.0547 0.444336 11.3623 0.57251 11.6272 0.837402L17.1899 6.3916C17.4207 6.62231 17.5659 6.97266 17.5659 7.30591Z" fill="currentColor"></path>
-                              </svg>
-                            </div>
+        <div className="messages">            
+          {messages.map((message) => (
+            <div key={message.id}>
+              <div className={`message ${message.role} ${message.isAnimating ? 'message-entering' : ''}`}>
+                <div>{message.content}</div>
+              </div>
+              
+              {message.sources && message.sources.length > 0 && (
+                <div className="source-carousel">
+                  <div className="source-cards">
+                    {message.sources.map((source, i) => (
+                      <div
+                        key={i}
+                        className={`source-card ${i % 2 === 0 ? 'source-card-dark' : 'source-card-light'}`}
+                        onClick={() => window.open(source.url, '_blank')}
+                      >
+                        <div className="source-card-title">
+                          {source.title.replace(/^Unloan \| /, '')}
+                        </div>
+                        <div className="source-card-excerpt">
+                          {source.content}
+                        </div>
+                        <div className="source-card-footer">
+                          <span className="source-card-similarity">
+                            {source.similarity >= 0.7 ? 'Must read' : 'Good to know'}
+                          </span>
+                          <div className="source-card-arrow">
+                            <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M17.5659 7.30591C17.5659 7.63916 17.4207 7.9895 17.1899 8.22021L11.6187 13.7744C11.3623 14.0308 11.0547 14.1589 10.7556 14.1589C10.0293 14.1589 9.53369 13.6548 9.53369 12.9883C9.53369 12.6208 9.69604 12.3218 9.92676 12.0996L11.8408 10.1855L13.7378 8.44238L11.8665 8.54492H2.21069C1.44165 8.54492 0.928955 8.04077 0.928955 7.30591C0.928955 6.5625 1.44165 6.06689 2.21069 6.06689H11.8665L13.7292 6.16943L11.8408 4.42627L9.92676 2.50366C9.69604 2.28149 9.53369 1.99097 9.53369 1.61499C9.53369 0.948486 10.0293 0.444336 10.7556 0.444336C11.0547 0.444336 11.3623 0.57251 11.6272 0.837402L17.1899 6.3916C17.4207 6.62231 17.5659 6.97266 17.5659 7.30591Z" fill="currentColor"></path>
+                            </svg>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
-            
-            {isTyping && (
-              <div className="typing-indicator">
-                <div className="typing-dots">
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
                 </div>
+              )}
+            </div>
+          ))}
+          
+          {isTyping && (
+            <div className="typing-indicator">
+              <div className="typing-dots">
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
               </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
 
-          <div className="chat-input">
-            {error && <div className="error">{error}</div>}
-            <form onSubmit={sendMessage} className="input-form">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about home loans, rates, features..."
-                disabled={loading}
-              />
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                Send
-              </button>
-            </form>
-          </div>
+        <div className="chat-input">
+          {error && <div className="error">{error}</div>}
+          <form onSubmit={sendMessage} className="input-form">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about home loans, rates, features..."
+              disabled={loading}
+            />
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              Send
+            </button>
+          </form>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AuthForm from '../components/AuthForm';
-import ChatInterface from '../components/ChatInterface';
+import ChatWidget from '../components/ChatWidget';
 
 interface User {
   id: string;
@@ -46,5 +46,5 @@ export default function Home() {
     return <AuthForm onLogin={handleLogin} />;
   }
 
-  return <ChatInterface user={user} onLogout={handleLogout} />;
+  return <ChatWidget user={user} onLogout={handleLogout} />;
 }
