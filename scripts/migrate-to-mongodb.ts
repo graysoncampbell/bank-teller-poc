@@ -36,6 +36,14 @@ class EmbeddingMigrator {
     console.log('✅ Disconnected from MongoDB');
   }
 
+  async getCollectionCount(): Promise<number> {
+    return await this.collection.estimatedDocumentCount();
+  }
+
+  async dropCollection(): Promise<void> {
+    await this.collection.drop();
+  }
+
   async createVectorSearchIndex() {
     try {
       // Create vector search index for Atlas Search (if using MongoDB Atlas)
@@ -160,7 +168,7 @@ class EmbeddingMigrator {
     const results = await this.collection
       .find(
         { $text: { $search: queryText } },
-        { score: { $meta: "textScore" } }
+        { projection: { score: { $meta: "textScore" } } }
       )
       .sort({ score: { $meta: "textScore" } })
       .limit(5)
@@ -183,7 +191,7 @@ async function main() {
     await migrator.connect();
     
     // Check if collection already has data
-    const existingCount = await migrator.collection.estimatedDocumentCount();
+    const existingCount = await migrator.getCollectionCount();
     if (existingCount > 0) {
       console.log(`⚠️  Collection already contains ${existingCount} documents`);
       const answer = process.argv.includes('--force') ? 'y' : 
@@ -193,7 +201,7 @@ async function main() {
         });
       
       if (answer.toLowerCase() === 'y') {
-        await migrator.collection.drop();
+        await migrator.dropCollection();
         console.log('🗑️  Dropped existing collection');
       } else {
         console.log('✋ Migration cancelled');

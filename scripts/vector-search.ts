@@ -120,7 +120,7 @@ class VectorSearchEngine {
     const textResults = await this.collection
       .find(
         { $text: { $search: queryText } },
-        { score: { $meta: "textScore" } }
+        { projection: { score: { $meta: "textScore" } } }
       )
       .limit(limit * 2)
       .toArray();
@@ -168,7 +168,7 @@ class VectorSearchEngine {
     const results = await this.collection
       .find(
         { $text: { $search: queryText } },
-        { score: { $meta: "textScore" } }
+        { projection: { score: { $meta: "textScore" } } }
       )
       .sort({ score: { $meta: "textScore" } })
       .limit(limit)
@@ -270,4 +270,5 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-export { VectorSearchEngine, SearchResult, EmbeddingDocument };
+export { VectorSearchEngine };
+export type { SearchResult, EmbeddingDocument };

@@ -306,7 +306,8 @@ body {
 
 .source-card {
   min-width: 280px;
-  border-radius: 20px;
+  min-height: 200px;
+  border-radius: 24px;
   padding: 24px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   transition: all 0.2s ease;

@@ -1,5 +1,7 @@
 import { VectorSearchEngine } from '../scripts/vector-search';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { PrismaClient } from '@prisma/client';
+import * as cheerio from 'cheerio';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
@@ -16,10 +18,12 @@ export interface RAGResponse {
 export class RAGService {
   private searchEngine: VectorSearchEngine;
   private model: any;
+  private prisma: PrismaClient;
 
   constructor() {
     this.searchEngine = new VectorSearchEngine();
     this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    this.prisma = new PrismaClient();
   }
 
   async initialize() {
@@ -28,6 +32,22 @@ export class RAGService {
 
   async disconnect() {
     await this.searchEngine.disconnect();
+    await this.prisma.$disconnect();
+  }
+
+  private extractMetaDescription(html: string): string {
+    if (!html) return '';
+    
+    try {
+      const $ = cheerio.load(html);
+      const metaDescription = $('meta[name="description"]').attr('content') || 
+                             $('meta[property="og:description"]').attr('content') || 
+                             '';
+      return metaDescription.trim();
+    } catch (error) {
+      console.error('Error extracting meta description:', error);
+      return '';
+    }
   }
 
   async generateResponse(question: string): Promise<RAGResponse> {
@@ -69,14 +89,28 @@ Answer:`;
         const result = await this.model.generateContent(prompt);
         const answer = result.response.text();
 
+        // Get page data to extract meta descriptions
+        const uniqueUrls = [...new Set(searchResults.map(r => r.url))];
+        const pageData = await this.prisma.page.findMany({
+          where: { url: { in: uniqueUrls } },
+          select: { url: true, rawHtml: true }
+        });
+
+        const pageHtmlMap = new Map(pageData.map(p => [p.url, p.rawHtml || '']));
+
         return {
           answer,
-          sources: searchResults.map(result => ({
-            url: result.url,
-            title: result.title || 'Untitled',
-            content: result.content.substring(0, 200) + '...',
-            similarity: result.similarity || 0
-          }))
+          sources: searchResults.map(result => {
+            const html = pageHtmlMap.get(result.url) || '';
+            const metaDescription = this.extractMetaDescription(html);
+            
+            return {
+              url: result.url,
+              title: result.title || 'Untitled',
+              content: metaDescription || result.content.substring(0, 200) + '...',
+              similarity: result.similarity || 0
+            };
+          })
         };
       } catch (error: any) {
         console.error(`Attempt ${attempt} failed:`, error);
@@ -89,7 +123,7 @@ Answer:`;
 
         if (attempt === maxRetries || !isRetryableError) {
           // Last attempt or non-retryable error - return fallback response
-          return this.getFallbackResponse(question, searchResults);
+          return await this.getFallbackResponse(question, searchResults);
         }
 
         // Wait before retry with exponential backoff
@@ -99,10 +133,10 @@ Answer:`;
     }
 
     // This shouldn't be reached, but just in case
-    return this.getFallbackResponse(question, searchResults);
+    return await this.getFallbackResponse(question, searchResults);
   }
 
-  private getFallbackResponse(question: string, searchResults: any[]): RAGResponse {
+  private async getFallbackResponse(question: string, searchResults: any[]): Promise<RAGResponse> {
     // Create a basic response using the search results when AI is unavailable
     const topResult = searchResults[0];
     
@@ -119,14 +153,28 @@ Answer:`;
       fallbackAnswer += "Please try asking your question again in a moment, or visit unloan.com.au for more information about home loans.";
     }
 
+    // Get page data to extract meta descriptions for fallback too
+    const uniqueUrls = [...new Set(searchResults.map(r => r.url))];
+    const pageData = await this.prisma.page.findMany({
+      where: { url: { in: uniqueUrls } },
+      select: { url: true, rawHtml: true }
+    });
+
+    const pageHtmlMap = new Map(pageData.map(p => [p.url, p.rawHtml || '']));
+
     return {
       answer: fallbackAnswer,
-      sources: searchResults.map(result => ({
-        url: result.url,
-        title: result.title || 'Untitled',
-        content: result.content.substring(0, 200) + '...',
-        similarity: result.similarity || 0
-      }))
+      sources: searchResults.map(result => {
+        const html = pageHtmlMap.get(result.url) || '';
+        const metaDescription = this.extractMetaDescription(html);
+        
+        return {
+          url: result.url,
+          title: result.title || 'Untitled',
+          content: metaDescription || result.content.substring(0, 200) + '...',
+          similarity: result.similarity || 0
+        };
+      })
     };
   }
 }
