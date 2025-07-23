@@ -5,6 +5,14 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
+// Allowed email domains for registration and login
+const ALLOWED_DOMAINS = ['unloan.com.au', 'loonshoot.com'];
+
+function isEmailAllowed(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return ALLOWED_DOMAINS.includes(domain);
+}
+
 export interface User {
   id: string;
   email: string;
@@ -36,6 +44,11 @@ export function verifyToken(token: string): User | null {
 }
 
 export async function createUser(email: string, password: string) {
+  // Check if email domain is allowed
+  if (!isEmailAllowed(email)) {
+    throw new Error('Your domain is not supported');
+  }
+
   const hashedPassword = await hashPassword(password);
   return prisma.user.create({
     data: {
@@ -46,6 +59,11 @@ export async function createUser(email: string, password: string) {
 }
 
 export async function authenticateUser(email: string, password: string) {
+  // Check if email domain is allowed
+  if (!isEmailAllowed(email)) {
+    return null; // Reject login for non-allowed domains
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
