@@ -327,10 +327,14 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
                             {source.content}
                           </div>
                           <div className="source-card-footer">
-                            <span>unloan.com.au</span>
                             <span className="source-card-similarity">
-                              {(source.similarity * 100).toFixed(0)}% match
+                              {source.similarity >= 0.7 ? 'Must read' : 'Good to know'}
                             </span>
+                            <div className="source-card-arrow">
+                              <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M17.5659 7.30591C17.5659 7.63916 17.4207 7.9895 17.1899 8.22021L11.6187 13.7744C11.3623 14.0308 11.0547 14.1589 10.7556 14.1589C10.0293 14.1589 9.53369 13.6548 9.53369 12.9883C9.53369 12.6208 9.69604 12.3218 9.92676 12.0996L11.8408 10.1855L13.7378 8.44238L11.8665 8.54492H2.21069C1.44165 8.54492 0.928955 8.04077 0.928955 7.30591C0.928955 6.5625 1.44165 6.06689 2.21069 6.06689H11.8665L13.7292 6.16943L11.8408 4.42627L9.92676 2.50366C9.69604 2.28149 9.53369 1.99097 9.53369 1.61499C9.53369 0.948486 10.0293 0.444336 10.7556 0.444336C11.0547 0.444336 11.3623 0.57251 11.6272 0.837402L17.1899 6.3916C17.4207 6.62231 17.5659 6.97266 17.5659 7.30591Z" fill="currentColor"></path>
+                              </svg>
+                            </div>
                           </div>
                         </div>
                       ))}

@@ -305,7 +305,7 @@ body {
 }
 
 .source-card {
-  min-width: 320px;
+  min-width: 280px;
   border-radius: 20px;
   padding: 24px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
@@ -378,6 +378,30 @@ body {
 .source-card-light .source-card-similarity {
   background: rgba(0,0,0,0.1);
   color: #000000;
+}
+
+.source-card-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.source-card-light .source-card-arrow {
+  background: rgba(0,0,0,0.08);
+}
+
+.source-card:hover .source-card-arrow {
+  background: rgba(255,255,255,0.3);
+  transform: translateX(2px);
+}
+
+.source-card-light:hover .source-card-arrow {
+  background: rgba(0,0,0,0.15);
 }
 
 .chat-input {
