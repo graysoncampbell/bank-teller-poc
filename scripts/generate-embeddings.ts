@@ -1,3 +1,18 @@
+/**
+ * Embedding Generator for Scraped Content
+ * 
+ * This script generates vector embeddings for scraped page content using Google's 
+ * text-embedding-004 model. These embeddings power the vector search functionality.
+ * 
+ * Usage: npx tsx scripts/generate-embeddings.ts
+ * 
+ * Features:
+ * - Processes scraped pages and generates embeddings
+ * - Chunks long content into manageable pieces
+ * - Rate limiting and retry logic for API calls
+ * - Stores embeddings in MongoDB via Prisma
+ */
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaClient } from '@prisma/client';
 

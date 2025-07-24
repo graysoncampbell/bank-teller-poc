@@ -1,3 +1,17 @@
+/**
+ * Web Scraper for Unloan Content
+ * 
+ * This script scrapes content from the Unloan website to keep the knowledge base updated.
+ * 
+ * Usage: npx tsx scripts/scraper.ts
+ * 
+ * Features:
+ * - Fetches sitemap from unloan.com.au
+ * - Scrapes page content with rate limiting (15 pages/minute)
+ * - Stores scraped data in MongoDB via Prisma
+ * - Handles pagination and error recovery
+ */
+
 import * as cheerio from 'cheerio';
 import * as xml2js from 'xml2js';
 import { PrismaClient } from '@prisma/client';

@@ -1,5 +1,19 @@
 #!/usr/bin/env tsx
 
+/**
+ * Setup Verification Script
+ * 
+ * This script verifies that the application environment is properly configured.
+ * 
+ * Usage: npx tsx scripts/setup.ts
+ * 
+ * Checks:
+ * - Database connection to MongoDB Atlas
+ * - Required environment variables (GOOGLE_API_KEY, MONGODB_URL)
+ * - Database collections and sample data
+ * - Overall system readiness
+ */
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

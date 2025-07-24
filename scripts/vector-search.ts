@@ -1,13 +1,26 @@
+/**
+ * Vector Search Engine for RAG (Retrieval-Augmented Generation)
+ * 
+ * This script provides vector similarity search capabilities for the application.
+ * It's used by the RAG service to find relevant content for user questions.
+ * 
+ * Key Features:
+ * - Vector similarity search using Google's text-embedding-004 model
+ * - Text search using MongoDB text indexes  
+ * - Hybrid search combining both approaches
+ * - Works with remote MongoDB Atlas database
+ */
+
 import { MongoClient, Db, Collection } from 'mongodb';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface EmbeddingDocument {
   _id?: string;
   pageId: string;
-  url: string;
-  title: string | null;
+  url?: string; // From joined Page collection
+  title?: string | null; // From joined Page collection
   content: string;
-  vector: number[];
+  vector: number[] | string;
   metadata: any;
   chunkIndex?: number;
   createdAt: Date;
@@ -24,13 +37,13 @@ class VectorSearchEngine {
   private genAI: GoogleGenerativeAI;
 
   constructor(
-    mongoUrl: string = 'mongodb://localhost:27017',
-    dbName: string = 'unloan_vectors',
+    mongoUrl: string = process.env.MONGODB_URL || 'mongodb://localhost:27017',
+    dbName: string = 'unloan',
     apiKey?: string
   ) {
     this.mongoClient = new MongoClient(mongoUrl);
     this.db = this.mongoClient.db(dbName);
-    this.collection = this.db.collection('embeddings');
+    this.collection = this.db.collection('Embedding');
     
     const googleApiKey = apiKey || process.env.GOOGLE_API_KEY;
     if (!googleApiKey) {
@@ -81,19 +94,60 @@ class VectorSearchEngine {
     const queryVector = await this.generateEmbedding(queryText);
     
     console.log(`📊 Searching through embeddings...`);
-    const allEmbeddings = await this.collection.find({}).toArray();
+    // Join with Page collection to get url and title
+    const allEmbeddings = await this.collection.aggregate([
+      {
+        $lookup: {
+          from: 'Page',
+          localField: 'pageId',
+          foreignField: '_id',
+          as: 'page'
+        }
+      },
+      {
+        $unwind: '$page'
+      },
+      {
+        $project: {
+          _id: 1,
+          pageId: 1,
+          content: 1,
+          vector: 1,
+          metadata: 1,
+          createdAt: 1,
+          url: '$page.url',
+          title: '$page.title'
+        }
+      }
+    ]).toArray();
     
     const results: SearchResult[] = [];
     
     for (const embedding of allEmbeddings) {
-      if (embedding.vector && embedding.vector.length > 0) {
-        const similarity = this.cosineSimilarity(queryVector, embedding.vector);
+      let vectorArray: number[] = [];
+      
+      // Handle different vector storage formats
+      if (typeof embedding.vector === 'string') {
+        try {
+          vectorArray = JSON.parse(embedding.vector);
+        } catch (e) {
+          continue; // Skip invalid JSON
+        }
+      } else if (Array.isArray(embedding.vector)) {
+        vectorArray = embedding.vector;
+      } else {
+        continue; // Skip if vector is not in expected format
+      }
+      
+      if (vectorArray && vectorArray.length > 0) {
+        const similarity = this.cosineSimilarity(queryVector, vectorArray);
         
         if (similarity >= threshold) {
           results.push({
             ...embedding,
+            vector: vectorArray, // Normalize to array format
             similarity
-          });
+          } as SearchResult);
         }
       }
     }
@@ -116,14 +170,35 @@ class VectorSearchEngine {
     // Get vector similarity results
     const vectorResults = await this.vectorSimilaritySearch(queryText, limit * 2, 0.5);
     
-    // Get text search results
-    const textResults = await this.collection
-      .find(
-        { $text: { $search: queryText } },
-        { projection: { score: { $meta: "textScore" } } }
-      )
-      .limit(limit * 2)
-      .toArray();
+    // Get text search results with page info
+    const textResults = await this.collection.aggregate([
+      { $match: { $text: { $search: queryText } } },
+      { $addFields: { score: { $meta: "textScore" } } },
+      {
+        $lookup: {
+          from: 'Page',
+          localField: 'pageId',
+          foreignField: '_id',
+          as: 'page'
+        }
+      },
+      { $unwind: '$page' },
+      {
+        $project: {
+          _id: 1,
+          pageId: 1,
+          content: 1,
+          vector: 1,
+          metadata: 1,
+          createdAt: 1,
+          url: '$page.url',
+          title: '$page.title',
+          score: 1
+        }
+      },
+      { $sort: { score: { $meta: "textScore" } } },
+      { $limit: limit * 2 }
+    ]).toArray();
 
     // Combine and score results
     const combinedResults = new Map<string, SearchResult>();
@@ -153,7 +228,7 @@ class VectorSearchEngine {
         combinedResults.set(result.pageId, {
           ...result,
           similarity: weightedTextScore + rankBonus
-        });
+        } as SearchResult);
       }
     });
     
@@ -165,19 +240,40 @@ class VectorSearchEngine {
 
   // Simple text-based search
   async textSearch(queryText: string, limit: number = 10): Promise<SearchResult[]> {
-    const results = await this.collection
-      .find(
-        { $text: { $search: queryText } },
-        { projection: { score: { $meta: "textScore" } } }
-      )
-      .sort({ score: { $meta: "textScore" } })
-      .limit(limit)
-      .toArray();
+    const results = await this.collection.aggregate([
+      { $match: { $text: { $search: queryText } } },
+      { $addFields: { score: { $meta: "textScore" } } },
+      {
+        $lookup: {
+          from: 'Page',
+          localField: 'pageId',
+          foreignField: '_id',
+          as: 'page'
+        }
+      },
+      { $unwind: '$page' },
+      {
+        $project: {
+          _id: 1,
+          pageId: 1,
+          content: 1,
+          vector: 1,
+          metadata: 1,
+          createdAt: 1,
+          url: '$page.url',
+          title: '$page.title',
+          score: 1
+        }
+      },
+      { $sort: { score: { $meta: "textScore" } } },
+      { $limit: limit }
+    ]).toArray();
 
     return results.map(result => ({
       ...result,
-      similarity: (result as any).score / 10 // Normalize text score
-    }));
+      similarity: (result as any).score / 10, // Normalize text score
+      vector: result.vector || [] // Ensure vector property exists
+    } as SearchResult));
   }
 
   // Search by URL pattern
@@ -200,16 +296,28 @@ class VectorSearchEngine {
   async getStats() {
     const totalDocs = await this.collection.countDocuments();
     const uniquePages = await this.collection.distinct('pageId');
-    const avgVectorLength = await this.collection.aggregate([
-      { $match: { vector: { $exists: true } } },
-      { $project: { vectorLength: { $size: '$vector' } } },
-      { $group: { _id: null, avgLength: { $avg: '$vectorLength' } } }
-    ]).toArray();
+    
+    // For vector dimensions, we need to handle string format
+    const sampleVector = await this.collection.findOne({ vector: { $exists: true } });
+    let avgVectorDimensions = 0;
+    
+    if (sampleVector && sampleVector.vector) {
+      try {
+        if (typeof sampleVector.vector === 'string') {
+          const parsedVector = JSON.parse(sampleVector.vector);
+          avgVectorDimensions = Array.isArray(parsedVector) ? parsedVector.length : 0;
+        } else if (Array.isArray(sampleVector.vector)) {
+          avgVectorDimensions = sampleVector.vector.length;
+        }
+      } catch (e) {
+        avgVectorDimensions = 0;
+      }
+    }
 
     return {
       totalDocuments: totalDocs,
       uniquePages: uniquePages.length,
-      averageVectorDimensions: avgVectorLength[0]?.avgLength || 0
+      averageVectorDimensions: avgVectorDimensions
     };
   }
 }
