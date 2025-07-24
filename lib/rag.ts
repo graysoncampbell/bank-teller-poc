@@ -90,7 +90,7 @@ Answer:`;
         const answer = result.response.text();
 
         // Get page data to extract meta descriptions
-        const uniqueUrls = [...new Set(searchResults.map(r => r.url))];
+        const uniqueUrls = [...new Set(searchResults.map(r => r.url).filter((url): url is string => !!url))];
         const pageData = await this.prisma.page.findMany({
           where: { url: { in: uniqueUrls } },
           select: { url: true, rawHtml: true }
@@ -100,17 +100,19 @@ Answer:`;
 
         return {
           answer,
-          sources: searchResults.map(result => {
-            const html = pageHtmlMap.get(result.url) || '';
-            const metaDescription = this.extractMetaDescription(html);
-            
-            return {
-              url: result.url,
-              title: result.title || 'Untitled',
-              content: metaDescription || result.content.substring(0, 200) + '...',
-              similarity: result.similarity || 0
-            };
-          })
+          sources: searchResults
+            .filter(result => result.url) // Only include results with URLs
+            .map(result => {
+              const html = pageHtmlMap.get(result.url!) || '';
+              const metaDescription = this.extractMetaDescription(html);
+              
+              return {
+                url: result.url!,
+                title: result.title || 'Untitled',
+                content: metaDescription || result.content.substring(0, 200) + '...',
+                similarity: result.similarity || 0
+              };
+            })
         };
       } catch (error: any) {
         console.error(`Attempt ${attempt} failed:`, error);
@@ -154,7 +156,7 @@ Answer:`;
     }
 
     // Get page data to extract meta descriptions for fallback too
-    const uniqueUrls = [...new Set(searchResults.map(r => r.url))];
+    const uniqueUrls = [...new Set(searchResults.map(r => r.url).filter((url): url is string => !!url))];
     const pageData = await this.prisma.page.findMany({
       where: { url: { in: uniqueUrls } },
       select: { url: true, rawHtml: true }
@@ -164,17 +166,19 @@ Answer:`;
 
     return {
       answer: fallbackAnswer,
-      sources: searchResults.map(result => {
-        const html = pageHtmlMap.get(result.url) || '';
-        const metaDescription = this.extractMetaDescription(html);
-        
-        return {
-          url: result.url,
-          title: result.title || 'Untitled',
-          content: metaDescription || result.content.substring(0, 200) + '...',
-          similarity: result.similarity || 0
-        };
-      })
+      sources: searchResults
+        .filter(result => result.url) // Only include results with URLs
+        .map(result => {
+          const html = pageHtmlMap.get(result.url!) || '';
+          const metaDescription = this.extractMetaDescription(html);
+          
+          return {
+            url: result.url!,
+            title: result.title || 'Untitled',
+            content: metaDescription || result.content.substring(0, 200) + '...',
+            similarity: result.similarity || 0
+          };
+        })
     };
   }
 }
