@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev & npx tsc --noEmit --watch",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -32,13 +32,13 @@
     "prisma": "^6.12.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "tsx": "^4.7.0",
     "typescript": "^5.8.3",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "eslint": "^8",
-    "eslint-config-next": "15.4.3"
+    "eslint-config-next": "15.4.3",
+    "tsx": "^4.20.3"
   }
 }
